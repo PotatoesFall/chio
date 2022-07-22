@@ -40,7 +40,7 @@ type Mux struct {
 	notFoundHandler http.HandlerFunc
 
 	// The middleware stack
-	middlewares []func(http.Handler) http.Handler
+	middlewares []func(http.HandlerFunc) http.HandlerFunc
 
 	// Controls the behaviour of middleware chain generation when a mux
 	// is registered as an inline group inside another mux.
@@ -97,7 +97,7 @@ func (mx *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // route to a specific handler, which provides opportunity to respond early,
 // change the course of the request execution, or set request-scoped values for
 // the next http.Handler.
-func (mx *Mux) Use(middlewares ...func(http.Handler) http.Handler) {
+func (mx *Mux) Use(middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
 	if mx.handler != nil {
 		panic("chi: all middlewares must be defined before routes on a mux")
 	}
@@ -107,7 +107,7 @@ func (mx *Mux) Use(middlewares ...func(http.Handler) http.Handler) {
 // Handle adds the route `pattern` that matches any http method to
 // execute the `handler` http.Handler.
 func (mx *Mux) Handle(pattern string, handler http.Handler) {
-	mx.handle(mALL, pattern, handler)
+	mx.handle(mALL, pattern, handler.ServeHTTP)
 }
 
 // HandleFunc adds the route `pattern` that matches any http method to
@@ -123,7 +123,7 @@ func (mx *Mux) Method(method, pattern string, handler http.Handler) {
 	if !ok {
 		panic(fmt.Sprintf("chi: '%s' http method is not supported.", method))
 	}
-	mx.handle(m, pattern, handler)
+	mx.handle(m, pattern, handler.ServeHTTP)
 }
 
 // MethodFunc adds the route `pattern` that matches `method` http method to
@@ -227,7 +227,7 @@ func (mx *Mux) MethodNotAllowed(handlerFn http.HandlerFunc) {
 }
 
 // With adds inline middlewares for an endpoint handler.
-func (mx *Mux) With(middlewares ...func(http.Handler) http.Handler) Router {
+func (mx *Mux) With(middlewares ...func(http.HandlerFunc) http.HandlerFunc) Router {
 	// Similarly as in handle(), we must build the mux handler once additional
 	// middleware registration isn't allowed for this stack, like now.
 	if !mx.inline && mx.handler == nil {
@@ -387,7 +387,7 @@ func (mx *Mux) MethodNotAllowedHandler() http.HandlerFunc {
 
 // handle registers a http.Handler in the routing tree for a particular http method
 // and routing pattern.
-func (mx *Mux) handle(method methodTyp, pattern string, handler http.Handler) *node {
+func (mx *Mux) handle(method methodTyp, pattern string, handler http.HandlerFunc) *node {
 	if len(pattern) == 0 || pattern[0] != '/' {
 		panic(fmt.Sprintf("chi: routing pattern must begin with '/' in '%s'", pattern))
 	}
@@ -398,10 +398,10 @@ func (mx *Mux) handle(method methodTyp, pattern string, handler http.Handler) *n
 	}
 
 	// Build endpoint handler with inline middlewares for the route
-	var h http.Handler
+	var h http.HandlerFunc
 	if mx.inline {
 		mx.handler = http.HandlerFunc(mx.routeHTTP)
-		h = Chain(mx.middlewares...).Handler(handler)
+		h = Chain(mx.middlewares...).HandlerFunc(handler)
 	} else {
 		h = handler
 	}

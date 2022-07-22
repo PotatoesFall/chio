@@ -122,7 +122,7 @@ func (s endpoints) Value(method methodTyp) *endpoint {
 	return mh
 }
 
-func (n *node) InsertRoute(method methodTyp, pattern string, handler http.Handler) *node {
+func (n *node) InsertRoute(method methodTyp, pattern string, handler http.HandlerFunc) *node {
 	var parent *node
 	search := pattern
 
@@ -136,7 +136,7 @@ func (n *node) InsertRoute(method methodTyp, pattern string, handler http.Handle
 
 		// We're going to be searching for a wild node next,
 		// in this case, we need to get the tail
-		var label = search[0]
+		label := search[0]
 		var segTail byte
 		var segEndIdx int
 		var segTyp nodeTyp
@@ -821,16 +821,16 @@ type Route struct {
 }
 
 // WalkFunc is the type of the function called for each method and route visited by Walk.
-type WalkFunc func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error
+type WalkFunc func(method string, route string, handler http.Handler, middlewares ...func(http.HandlerFunc) http.HandlerFunc) error
 
 // Walk walks any router tree that implements Routes interface.
 func Walk(r Routes, walkFn WalkFunc) error {
 	return walk(r, walkFn, "")
 }
 
-func walk(r Routes, walkFn WalkFunc, parentRoute string, parentMw ...func(http.Handler) http.Handler) error {
+func walk(r Routes, walkFn WalkFunc, parentRoute string, parentMw ...func(http.HandlerFunc) http.HandlerFunc) error {
 	for _, route := range r.Routes() {
-		mws := make([]func(http.Handler) http.Handler, len(parentMw))
+		mws := make([]func(http.HandlerFunc) http.HandlerFunc, len(parentMw))
 		copy(mws, parentMw)
 		mws = append(mws, r.Middlewares()...)
 

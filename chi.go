@@ -69,10 +69,10 @@ type Router interface {
 	Routes
 
 	// Use appends one or more middlewares onto the Router stack.
-	Use(middlewares ...func(http.Handler) http.Handler)
+	Use(middlewares ...func(http.HandlerFunc) http.HandlerFunc)
 
 	// With adds inline middlewares for an endpoint handler.
-	With(middlewares ...func(http.Handler) http.Handler) Router
+	With(middlewares ...func(http.HandlerFunc) http.HandlerFunc) Router
 
 	// Group adds a new inline-Router along the current routing
 	// path, with a fresh middleware stack for the inline-Router.
@@ -131,4 +131,4 @@ type Routes interface {
 
 // Middlewares type is a slice of standard middleware handlers with methods
 // to compose middleware chains and http.Handler's.
-type Middlewares []func(http.Handler) http.Handler
+type Middlewares []func(http.HandlerFunc) http.HandlerFunc
